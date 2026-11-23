@@ -20,11 +20,11 @@
     "restore": "tsx scripts/restore.ts"
   },
   "dependencies": {
-    "firebase": "^12.19.0",
+    "firebase": "^13.4.0",
     "preact": "^11.2.0"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.63.0",
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^26.6.6",
