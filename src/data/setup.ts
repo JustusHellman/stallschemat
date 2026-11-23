@@ -14,6 +14,13 @@ export async function createBackend(): Promise<Backend> {
     }
     const backend = new MemoryBackend(params.has('empty') ? undefined : demoData(demoNow()), 'stallschemat-demo-db');
     (window as unknown as { __stallBackend: unknown }).__stallBackend = backend; // test hook (demo only)
+    if (params.has('failconnect')) {
+      // test hook: simulate Firestore refusing access (rules not published)
+      (backend as Backend).subscribeConfig = (_cb, onError) => {
+        queueMicrotask(() => onError(new Error('Missing or insufficient permissions.')));
+        return () => {};
+      };
+    }
     return backend;
   }
   const [{ initializeApp }, fs, { FirebaseBackend }] = await Promise.all([

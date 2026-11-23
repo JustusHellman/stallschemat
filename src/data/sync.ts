@@ -216,7 +216,7 @@ export class SyncController {
   }
 
   private updateStatus() {
-    if (!this.connected) return;
+    if (!this.connected || this.state.status === 'error') return; // an error sticks until refresh()
     const anyCache = [...this.cacheFlags.values()].some(Boolean);
     const allLoaded = this.cacheFlags.has('config') && [...this.weekUnsubs.keys()].every((id) => this.cacheFlags.has(id));
     this.set({ status: anyCache ? 'offline' : allLoaded ? 'live' : 'connecting' });

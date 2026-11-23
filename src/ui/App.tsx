@@ -134,6 +134,7 @@ export function App({ backend }: { backend: Backend }) {
   }, [state, now, me]);
 
   const header = (() => {
+    if (!state.configLoaded) return { title: 'Stallschemat', logo: true, sub: state.status === 'error' ? 'Kunde inte hämta schemat' : 'Hämtar schemat…' };
     if (needsIdentity) return { title: 'Stallschemat', logo: true, sub: 'Välkommen! Vem är du?' };
     if (currentTab === 'schema') {
       return {
@@ -173,7 +174,7 @@ export function App({ backend }: { backend: Backend }) {
 
         <main class={isAdmin && !needsIdentity ? 'with-tabs' : ''}>
           {!state.configLoaded ? (
-            <div class="loading">{state.status === 'error' ? `Kunde inte ansluta: ${state.error}` : 'Laddar schemat…'}</div>
+            state.status === 'error' ? <ConnectError error={state.error} onRetry={() => sync.refresh()} /> : <div class="loading">Laddar schemat…</div>
           ) : needsIdentity ? (
             <WhoAreYou />
           ) : currentTab === 'schema' ? (
@@ -227,6 +228,23 @@ function StatusLine({ state, now, onRefresh }: { state: SyncState; now: Date; on
         {state.lastUpdate && state.status !== 'live' && state.status !== 'connecting' && ` · ${relativeTime(state.lastUpdate, now.getTime())}`}
       </span>
       {(state.status === 'offline' || state.status === 'error') && <button onClick={onRefresh}>Försök igen</button>}
+    </div>
+  );
+}
+
+/** Friendly Swedish message when the first load fails (with a hint for the admin). */
+function ConnectError({ error, onRetry }: { error?: string; onRetry: () => void }) {
+  const denied = /permission|insufficient/i.test(error ?? '');
+  return (
+    <div class="card center mt" data-testid="connect-error">
+      <h2>Kunde inte hämta schemat</h2>
+      <p>
+        {denied
+          ? 'Databasen nekade åtkomst. Det beror nästan alltid på att säkerhetsreglerna inte är publicerade i Firebase (Firestore → Regler).'
+          : 'Kontrollera internetanslutningen och försök igen.'}
+      </p>
+      <button class="btn dark block" onClick={onRetry}>Försök igen</button>
+      <p class="help" style={{ fontSize: '11.5px' }}>Teknisk info: {error}</p>
     </div>
   );
 }

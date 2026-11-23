@@ -77,6 +77,17 @@ test.describe('navigation', () => {
   });
 });
 
+test.describe('connection problems', () => {
+  test('shows a friendly Swedish error (with a hint) when the database refuses access', async ({ page }) => {
+    await page.goto('/?reset&failconnect&now=2026-11-24T12:00');
+    const box = page.getByTestId('connect-error');
+    await expect(box).toContainText('Kunde inte hämta schemat');
+    await expect(box).toContainText('säkerhetsreglerna');
+    await expect(page.locator('header')).not.toContainText('Hej');
+    await expect(page.locator('header')).toContainText('Kunde inte hämta schemat');
+  });
+});
+
 test.describe('PWA', () => {
   test('has a valid web app manifest and service worker', async ({ page, request }) => {
     await page.goto('/');

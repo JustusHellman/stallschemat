@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Backend } from '../../src/data/backend';
 import { MemoryBackend } from '../../src/data/memory';
 import { SyncController, type VisibilitySource } from '../../src/data/sync';
 import { at, testConfig, week } from './helpers';
@@ -151,6 +152,19 @@ describe('SyncController', () => {
     off();
     sync.stop();
     expect(backend.activeListeners).toBe(0);
+  });
+
+  it('keeps showing an error even if other documents load afterwards', async () => {
+    (backend as Backend).subscribeConfig = (_cb, onError) => {
+      queueMicrotask(() => onError(new Error('Missing or insufficient permissions.')));
+      return () => {};
+    };
+    sync.start();
+    await flush();
+    expect(sync.snapshot.status).toBe('error');
+    expect(sync.snapshot.error).toContain('permissions');
+    backend.setWeek('2026-W48', week()); // a later week snapshot must not hide the error
+    expect(sync.snapshot.status).toBe('error');
   });
 
   it('a whole day of typical use stays far below the free quota', async () => {
