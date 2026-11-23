@@ -4,7 +4,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
+import { deleteApp, initializeApp, type FirebaseApp } from 'firebase/app';
+import { connectFirestoreEmulator, deleteDoc, doc, getDoc, getFirestore, setDoc, terminate, type Firestore } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { FirebaseBackend, configToDoc } from '../../src/data/firebase';
 import { defaultConfig } from '../../src/domain/defaults';
@@ -17,11 +18,29 @@ beforeAll(async () => {
     firestore: { rules: readFileSync('firestore.rules', 'utf8') },
   });
 });
-afterAll(() => env.cleanup());
+afterAll(async () => {
+  await Promise.all(clients.map(({ app, db }) => terminate(db).then(() => deleteApp(app))));
+  await env.cleanup();
+});
 beforeEach(() => env.clearFirestore());
 
-const authed = (uid = 'u1') => env.authenticatedContext(uid).firestore() as unknown as Firestore;
-const anon = () => env.unauthenticatedContext().firestore() as unknown as Firestore;
+/*
+ * Clients use the plain modular SDK pointed at the emulator, with a mock
+ * sign-in token. (The helper's context.firestore() goes through Firebase's
+ * "compat" layer, which breaks when firebase-admin installs a second copy of it.)
+ */
+const PROJECT = 'demo-stallschema';
+const [EMU_HOST, EMU_PORT] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
+const clients: { app: FirebaseApp; db: Firestore }[] = [];
+function client(uid?: string): Firestore {
+  const app = initializeApp({ projectId: PROJECT, apiKey: 'demo-key' }, `client-${clients.length}`);
+  const db = getFirestore(app);
+  connectFirestoreEmulator(db, EMU_HOST, Number(EMU_PORT), uid ? { mockUserToken: { sub: uid, user_id: uid } } : undefined);
+  clients.push({ app, db });
+  return db;
+}
+const authed = (uid = 'u1') => client(uid);
+const anon = () => client();
 const validWeek = { assignments: { '2026-11-23_frukost': 'maja' }, days: {}, log: [] };
 
 describe('security rules', () => {
@@ -124,13 +143,12 @@ describe('calendar feed script against the emulator', () => {
     const config = { ...defaultConfig(), people: { maja: { name: 'Maja', color: '#2e9e6a', active: true } } };
     const { localISODate, weekId, addDays } = await import('../../src/domain/dates');
     const date = addDays(localISODate(now), 2);
-    await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore;
-      await setDoc(doc(db, 'config/main'), configToDoc(config));
-      await setDoc(doc(db, `weeks/${weekId(date)}`), { assignments: { [`${date}_frukost`]: 'maja' }, days: {}, log: [] });
-    });
+    // Seed with the admin SDK (bypasses the rules, like the real calendar job).
+    const admin = adminDb();
+    await admin.doc('config/main').set(configToDoc(config));
+    await admin.doc(`weeks/${weekId(date)}`).set({ assignments: { [`${date}_frukost`]: 'maja' }, days: {}, log: [] });
     const out = mkdtempSync(join(tmpdir(), 'cal-'));
-    await generateCalendars(adminDb(), out, now);
+    await generateCalendars(admin, out, now);
     expect(existsSync(join(out, 'cal/alla.ics'))).toBe(true);
     const ics = readFileSync(join(out, 'cal/maja.ics'), 'utf8');
     expect(ics).toContain(`DTSTART;TZID=Europe/Stockholm:${date.replace(/-/g, '')}T`);
