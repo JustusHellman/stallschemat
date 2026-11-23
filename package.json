@@ -1,0 +1,43 @@
+{
+  "name": "stallschema",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:demo": "vite --mode demo",
+    "build": "tsc --noEmit && vite build",
+    "build:demo": "vite build --mode demo --outDir dist-demo",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-stallschema \"vitest run --config vitest.rules.config.ts\"",
+    "test:e2e": "playwright test",
+    "test:all": "npm run typecheck && npm test && npm run test:rules && npm run test:e2e",
+    "calendars": "tsx scripts/build-calendars.ts dist",
+    "backup": "tsx scripts/backup.ts backup.json",
+    "restore": "tsx scripts/restore.ts"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.63.0",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "firebase-admin": "^14.5.1",
+    "firebase-tools": "^15.37.0",
+    "jsdom": "^31.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

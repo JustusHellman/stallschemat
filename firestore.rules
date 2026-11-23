@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Stallschemat – "goodwill" security:
+// * Only signed-in clients (invisible anonymous sign-in in the app) may read/write.
+// * Only the two known document shapes can be written, with size limits,
+//   so nobody can fill the database with junk or delete anything.
+// * Everything else is closed.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validConfig(d) {
+      return d.keys().hasOnly(['people', 'templates', 'weeksAhead', 'adminHash'])
+        && d.keys().hasAll(['people', 'templates', 'weeksAhead'])
+        && d.people is map && d.people.size() <= 60
+        && d.templates is list && d.templates.size() >= 1 && d.templates.size() <= 50
+        && d.weeksAhead is int && d.weeksAhead >= 1 && d.weeksAhead <= 12
+        && (!('adminHash' in d) || d.adminHash == null || (d.adminHash is string && d.adminHash.size() == 64));
+    }
+
+    function validWeek(d) {
+      return d.keys().hasOnly(['assignments', 'days', 'log'])
+        && d.assignments is map && d.assignments.size() <= 120
+        && d.days is map && d.days.size() <= 7
+        && d.log is list && d.log.size() <= 300;
+    }
+
+    match /config/main {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && validConfig(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /weeks/{weekId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && weekId.matches('^[0-9]{4}-W[0-9]{2}$')
+        && validWeek(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
