@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-demo
+test-results
+playwright-report
+*.log
+.env.local
+service-account*.json
