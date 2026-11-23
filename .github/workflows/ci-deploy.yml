@@ -27,10 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: 21 }
       - run: npm ci
       - name: Typecheck
@@ -43,9 +43,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests (iPhone + Android viewports)
         run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
-        with: { name: playwright-report, path: test-results, retention-days: 7 }
+        with: { name: playwright-report, path: test-results, retention-days: 7, if-no-files-found: ignore }
 
   deploy:
     needs: test
@@ -61,8 +61,8 @@ jobs:
     env:
       HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Build app
@@ -81,8 +81,8 @@ jobs:
       - name: Calendar feeds skipped
         if: env.HAS_SA != 'true'
         run: echo "::warning::FIREBASE_SERVICE_ACCOUNT secret missing – calendar feeds not built."
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with: { path: dist }
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
